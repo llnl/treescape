@@ -20,6 +20,42 @@ community.
 
 You can also start an issue for a [bug report or feature] request(https://github.com/LLNL/treescape/issues/new).
 
+# Setup Localhost environment, for development
+1) Clone the repository:
+```
+git clone https://github.com/LLNL/treescape.git
+```
+
+2) Create a virtual environment:
+```
+python3 -m venv venv
+```
+
+3) Activate the virtual environment:
+```
+source venv/bin/activate
+```
+
+4) Install the dependencies:
+```
+pip install -r requirements.txt
+```
+
+5) Run the notebook:
+To make it easier to reach your notebooks, launch jupyter notebook from the directory where your notebooks are.  
+```
+jupyter notebook
+```
+6) Open Notebook
+After jupyter notebook is running, open the notebook `regression_notebooks/NightlyTestDemo_local.ipynb`.
+You will need to modify the paths to the caliper files to match your local environment.
+You will need to modify the following paths too:
+sys.path.append("/Users/aschwanden1/min-venv-local/lib/python3.9/site-packages")
+sys.path.append("/Users/aschwanden1/github/treescape")
+
+7) Run the cells in the notebook.
+
+
 # Contributions
 
 We welcome all kinds of contributions: new features, bug fixes, documentation edits; it's all great!
