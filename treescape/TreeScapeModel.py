@@ -67,27 +67,31 @@ class TreeScapeModel(list):
 
         # Initialize the transformed data list
         tsm_data = []
+        #print(repr(et))
+        #exit()
 
         # Iterate over each top-level key in the original data
         for key, value in et.items():
             # Iterate over each item in xaxis
-            for i, metadata in enumerate(value["xaxis"]):
-                # Find or create the entry for the current index
-                if len(tsm_data) <= i:
-                    tsm_data.append({"metadata": {}, "perftree": {}})
+            # Only proceed if value is a dict and has the key "xaxis"
+            if isinstance(value, dict) and "xaxis" in value:
+                for i, metadata in enumerate(value["xaxis"]):
+                    # Find or create the entry for the current index
+                    if len(tsm_data) <= i:
+                        tsm_data.append({"metadata": {}, "perftree": {}})
 
-                # Add or update the metadata and perftree
-                tsm_data[i]["metadata"] = metadata
+                    # Add or update the metadata and perftree
+                    tsm_data[i]["metadata"] = metadata
 
-                # Ensure the current key is in perftree
-                tsm_data[i]["perftree"][key] = (
-                    value["ydata"][i] if i < len(value["ydata"]) else None
-                )
+                    # Ensure the current key is in perftree
+                    tsm_data[i]["perftree"][key] = (
+                        value["ydata"][i] if i < len(value["ydata"]) else None
+                    )
 
-                # hack for now to get it working initially
-                # TODO: FIX!
-                if "perftree" in tsm_data[i] and "n" in tsm_data[i]["perftree"]:
-                    tsm_data[i]["perftree"]["main"] = tsm_data[i]["perftree"]["n"]
+                    # hack for now to get it working initially
+                    # TODO: FIX!
+                    if "perftree" in tsm_data[i] and "n" in tsm_data[i]["perftree"]:
+                        tsm_data[i]["perftree"]["main"] = tsm_data[i]["perftree"]["n"]
 
         tsm_runs = []
         for index, td_obj in enumerate(tsm_data):

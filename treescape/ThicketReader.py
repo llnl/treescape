@@ -25,17 +25,17 @@ class TH_ens:
     th_ens = 0
     profiles = 0
 
-    def get_th_ens(self):
-        return self.get_th_ens_impl()
+    def get_th_ens(self, cali_files ):
+        return self.get_th_ens_impl( cali_files )
 
-    def get_th_ens_impl(self):
+    def get_th_ens_impl(self, cali_files):
 
         if TH_ens.th_ens_defined == 0:
 
             TH_ens.th_ens_defined = 1
 
             # get a list of all cali files in subdirectory - recursively
-            PATH = "/Users/aschwanden1/lulesh_gen/100/"
+            PATH = cali_files
             TH_ens.profiles = [
                 y for x in os.walk(PATH) for y in glob(os.path.join(x[0], "*.cali"))
             ]
@@ -51,10 +51,7 @@ class TH_ens:
 
             # TH_ens.th_ens.metadata.reset_index(drop=True, inplace=True)
             # TH_ens.th_ens.metadata = pd.concat([TH_ens.th_ens.metadata, TH_ens.th_ens.metadata], ignore_index=True)
-            MyTimer("get_th_ens()")
-
             # tms = ThicketMultiplierStub(TH_ens.th_ens)
-            MyTimer("MultiplierStub()")
 
         return TH_ens.th_ens, TH_ens.profiles
 
@@ -95,15 +92,18 @@ class ThicketReader(Reader):
         # print(childrenMap)
         # print(parentMap)
 
-        MyTimer("GraphTraverseModel")
-
         xaxis_arr = self.get_all_xaxis()
         nodes = {}
 
         for xaxis in xaxis_arr:
             nodes[xaxis] = self.get_entire_for_xaxis(xaxis)
 
-        return {"nodes": nodes, "childrenMap": childrenMap, "parentMap": parentMap}
+        return {
+            "nodes": nodes,
+            "childrenMap": childrenMap,
+            "parentMap": parentMap,
+            "meta_globals": {}
+        }
 
     def get_entire_for_xaxis(self, xaxis_name):
 
@@ -114,17 +114,10 @@ class ThicketReader(Reader):
             # Access each column in the row
             metaobj_idx_by_profile[profile] = row
 
-        MyTimer("get_entire_for_xaxis - metaobj")
         # print(metaobj_idx_by_profile)
         sumArr = {}
         count = {}
         howmany = 0
-
-        # #  speed test.
-        # for index, row in df.iterrows():
-        #     x = 4
-
-        MyTimer("test df.iterrows() speed")
 
         #  YAxis: Now let's get the actual duration values, like the average durations.
         for index, row in df.iterrows():
@@ -134,7 +127,11 @@ class ThicketReader(Reader):
 
             howmany += 1
 
-            avg_duration = row["avg#inclusive#sum#time.duration"]
+            #print(repr(row))
+            #print(row)
+            #exit()
+            avg_duration = row["Avg time/rank"]
+            #avg = row["avg#inclusive#sum#time.duration"]
             name = row["name"]
             profile = row["profile"]
 
@@ -173,7 +170,7 @@ class ThicketReader(Reader):
         print("uniq_date=" + str(uniq_date))
 
         print("howmany=" + str(howmany))
-        MyTimer("get_entire_for_xaxis - iterrows")
+        #MyTimer("get_entire_for_xaxis - iterrows")
 
         renderDat = {}
         ldates = {}
@@ -206,7 +203,7 @@ class ThicketReader(Reader):
                 {"name": name, "ydata": renderDat[name], "xaxis": ordered}
             )
 
-        MyTimer("get_entire_for_xaxis - renderDat")
+        #MyTimer("get_entire_for_xaxis - renderDat")
 
         return entireNodes
 
