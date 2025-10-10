@@ -55,6 +55,15 @@ sys.path.append("/Users/aschwanden1/github/treescape")
 
 7) Run the cells in the notebook.
 
+# Purpose of each Directory
+treescape - This is the main directory.  It contains the python code for the project.
+scripts - This directory contains misc test scripts that are used to test exportSVG and other features.
+regression_scripts - This directory contains scripts that are used to run regression tests.  You can save a baseline for a set of data, and then compare future data to that baseline.
+baseline_results - this directory contains the baseline results for the regression tests.
+sandbox - This directory contains notebooks that are used for development and testing.  Contains throwaway code that may be useful for debugging.
+regression_notebooks - This directory contains notebooks that are used to run regression tests.
+licenses - This directory contains the licenses for the project.
+js - This directory contains the javascript code for the project.
 
 # Contributions
 
