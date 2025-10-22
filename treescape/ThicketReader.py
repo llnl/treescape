@@ -14,7 +14,9 @@ from .MyTimer import MyTimer
 input_deploy_dir_str = "/usr/gapps/spot/dev/"
 machine = platform.uname().machine
 
-import thicket as tt
+# Lazy import of thicket - will be imported when needed
+# import thicket as tt
+import random
 
 from .Reader import Reader
 
@@ -31,6 +33,23 @@ class TH_ens:
     def get_th_ens_impl(self, cali_files):
 
         if TH_ens.th_ens_defined == 0:
+
+            # Try to import thicket, adding common paths if needed
+            try:
+                import thicket as tt
+            except ModuleNotFoundError:
+                import sys
+                # Try common thicket installation paths
+                thicket_paths = [
+                    "/Users/aschwanden1/thicket",
+                    "/usr/gapps/spot/thicket",
+                ]
+                for path in thicket_paths:
+                    if os.path.exists(path) and path not in sys.path:
+                        sys.path.append(path)
+
+                # Try importing again
+                import thicket as tt
 
             TH_ens.th_ens_defined = 1
 
@@ -72,37 +91,116 @@ class ThicketReader(Reader):
 
         for profile, row in self.th_ens.metadata.iterrows():
 
-            for xaxis, row in row.items():
+            for xaxis, value in row.items():
                 if xaxis == self.xaxis:
-                    xaxis_arr.append(xaxis)
+                    xaxis_arr.append(value)
 
-            return xaxis_arr
+        return xaxis_arr
+
+    def get_all_xaxis_meta(self):
+
+        xaxis_arr = []
+
+        for profile, row in self.th_ens.metadata.iterrows():
+
+            meta_obj = {}
+            for xaxis, value in row.items():
+                meta_obj[xaxis] = value
+
+            meta_obj["profile"] = profile
+            xaxis_arr.append(meta_obj)
+
+        return xaxis_arr
+
+    def make_random_number( self ):
+        base = 1565172972
+        num = base + random.randint(0, 8000000)
+        return str(num)
 
     def get_entire(self):
 
         # PSTUB
-        from GraphTraverseModel import GraphTraverseModel
+        from .GraphTraverseModel import GraphTraverseModel
 
         gtm = GraphTraverseModel(self.th_ens, self.profiles)
-        # childrenMap = {'main': ['lulesh.cycle'], 'lulesh.cycle': ['TimeIncrement', 'LagrangeLeapFrog'], 'LagrangeLeapFrog': ['LagrangeNodal', 'LagrangeElements', 'CalcTimeConstraintsForElems'], 'CalcTimeConstraintsForElems': [], 'LagrangeElements': ['CalcLagrangeElements', 'CalcQForElems', 'ApplyMaterialPropertiesForElems'], 'ApplyMaterialPropertiesForElems': ['EvalEOSForElems'], 'EvalEOSForElems': ['CalcEnergyForElems'], 'CalcEnergyForElems': [], 'CalcLagrangeElements': ['CalcKinematicsForElems'], 'CalcKinematicsForElems': [], 'CalcQForElems': ['CalcMonotonicQForElems'], 'CalcMonotonicQForElems': [], 'LagrangeNodal': ['CalcForceForNodes'], 'CalcForceForNodes': ['CalcVolumeForceForElems'], 'CalcVolumeForceForElems': ['IntegrateStressForElems', 'CalcHourglassControlForElems'], 'CalcHourglassControlForElems': ['CalcFBHourglassForceForElems'], 'CalcFBHourglassForceForElems': [], 'IntegrateStressForElems': [], 'TimeIncrement': []}
         childrenMap = gtm.getParentToChildMapping()
-        # parentMap = {'lulesh.cycle': 'main', 'TimeIncrement': 'lulesh.cycle', 'LagrangeLeapFrog': 'lulesh.cycle', 'LagrangeNodal': 'LagrangeLeapFrog', 'LagrangeElements': 'LagrangeLeapFrog', 'CalcTimeConstraintsForElems': 'LagrangeLeapFrog', 'CalcLagrangeElements': 'LagrangeElements', 'CalcQForElems': 'LagrangeElements', 'ApplyMaterialPropertiesForElems': 'LagrangeElements', 'EvalEOSForElems': 'ApplyMaterialPropertiesForElems', 'CalcEnergyForElems': 'EvalEOSForElems', 'CalcKinematicsForElems': 'CalcLagrangeElements', 'CalcMonotonicQForElems': 'CalcQForElems', 'CalcForceForNodes': 'LagrangeNodal', 'CalcVolumeForceForElems': 'CalcForceForNodes', 'IntegrateStressForElems': 'CalcVolumeForceForElems', 'CalcHourglassControlForElems': 'CalcVolumeForceForElems', 'CalcFBHourglassForceForElems': 'CalcHourglassControlForElems'}
         parentMap = gtm.getChildToParentMapping()
 
-        # print(childrenMap)
-        # print(parentMap)
-
+        # Get all unique xaxis values (e.g., all unique launchdate values)
         xaxis_arr = self.get_all_xaxis()
+        meta_arr = self.get_all_xaxis_meta()
+
+        # Get data for each xaxis value
+        # This returns a dict: {xaxis_value: [list of node data]}
+        nodes_by_xaxis = {}
+        meta_by_xaxis = {}
+        for idx, xaxis in enumerate(xaxis_arr):
+            nodes_by_xaxis[xaxis] = self.get_entire_for_xaxis(xaxis)
+            meta_by_xaxis[xaxis] = meta_arr[idx]
+
+        # Transform the data structure to match what TreeScapeModel expects
+        # TreeScapeModel expects: {node_name: {"xaxis": [metadata1, metadata2, ...], "ydata": [data1, data2, ...]}}
+        # We currently have: {xaxis_value: [{"name": node_name, "ydata": data, "xaxis": ordered_xaxis}]}
+
         nodes = {}
 
-        for xaxis in xaxis_arr:
-            nodes[xaxis] = self.get_entire_for_xaxis(xaxis)
+        # Build a mapping of node_name -> list of (xaxis_value, ydata) pairs
+        for xaxis_value, node_list in nodes_by_xaxis.items():
+            for node_data in node_list:
+                node_name = node_data["name"]
+                ydata = node_data["ydata"][0]
+                # xaxis_value is the metadata for this run
+
+                if node_name not in nodes:
+                    nodes[node_name] = {"name": node_name, "xaxis": [], "ydata": []}
+
+                meta_stub = {
+                    "cali.caliper.version": "2.2.0-dev",
+                    "cali.channel": "spot",
+                    "user": "chavez35",
+                    "launchdate": self.make_random_number(),
+                    "executablepath": "/g/g90/johnson234/exe/STRIP_HEADER/toss17/impending4.8-3472",
+                    "libraries": "/etc/fin/etc/home.jafd",
+                    "cmdline": "[-active COM",
+                    "cluster": "rockfiro",
+                    "jobsize": "2",
+                    "threads": "101",
+                    "iterations": "11400000",
+                    "problem_size": "85",
+                    "num_regions": "11",
+                    "region_cost": "5",
+                    "region_balance": "1",
+                    "elapsed_time": "184.0",
+                    "figure_of_merit": "6560.0",
+                    "spot.metrics": "avg#face.duration#inclusive#sum5345"
+                }
+
+                nodes[node_name]["xaxis"].append(meta_by_xaxis[xaxis_value])
+                nodes[node_name]["ydata"].append(ydata)
 
         return {
             "nodes": nodes,
             "childrenMap": childrenMap,
             "parentMap": parentMap,
-            "meta_globals": {}
+            "meta_globals": {
+                "cali.caliper.version": "string",
+                "cali.channel": "string",
+                "user": "string",
+                "launchdate": "int",
+                "executablepath": "string",
+                "libraries": "string",
+                "cmdline": "string",
+                "cluster": "string",
+                "jobsize": "int",
+                "threads": "int",
+                "iterations": "int",
+                "problem_size": "int",
+                "num_regions": "int",
+                "region_cost": "int",
+                "region_balance": "int",
+                "elapsed_time": "float",
+                "figure_of_merit": "float"
+            }
         }
 
     def get_entire_for_xaxis(self, xaxis_name):
@@ -110,11 +208,11 @@ class ThicketReader(Reader):
         df = self.th_ens.dataframe.reset_index()
         metaobj_idx_by_profile = {}
 
-        for profile, row in self.th_ens.metadata.iterrows():
+        # Build a mapping from profile identifier to metadata row
+        # In Thicket, the index of metadata corresponds to the profile
+        for profile_idx, row in self.th_ens.metadata.iterrows():
             # Access each column in the row
-            metaobj_idx_by_profile[profile] = row
-
-        # print(metaobj_idx_by_profile)
+            metaobj_idx_by_profile[profile_idx] = row
         sumArr = {}
         count = {}
         howmany = 0
@@ -139,13 +237,32 @@ class ThicketReader(Reader):
                 sumArr[name] = {}
                 count[name] = {}
 
-            ldate = metaobj_idx_by_profile[profile][xaxis_name]
+            # Check if profile exists in the mapping
+            if profile not in metaobj_idx_by_profile:
+                # Profile might be a file path or other identifier
+                # Skip this row if we can't find the metadata
+                continue
+
+            # Access the metadata row for this profile, then get the xaxis value
+            # self.xaxis is the column name (e.g., "launchdate")
+            # xaxis_name is the specific value we're filtering for
+            metadata_row = metaobj_idx_by_profile[profile]
+            ldate = metadata_row[self.xaxis]
 
             #  make sure that "['asdfasdf']" is regarded as a string.
             ldate = str(ldate)
 
             if ldate.isnumeric():
                 ldate = float(ldate)
+
+            # Filter: only process rows that match the xaxis_name we're looking for
+            # Convert xaxis_name to the same type for comparison
+            xaxis_name_normalized = str(xaxis_name)
+            if xaxis_name_normalized.isnumeric():
+                xaxis_name_normalized = float(xaxis_name_normalized)
+
+            if ldate != xaxis_name_normalized:
+                continue
 
             if ldate in sumArr[name]:
                 sumArr[name][ldate]["sum"] += avg_duration
@@ -166,10 +283,10 @@ class ThicketReader(Reader):
 
                 count[name][ldate] = 0
 
-        uniq_date = len(sumArr["main"])
-        print("uniq_date=" + str(uniq_date))
+        # uniq_date = len(sumArr["main"])
+        # print("uniq_date=" + str(uniq_date))
 
-        print("howmany=" + str(howmany))
+        # print("howmany=" + str(howmany))
         #MyTimer("get_entire_for_xaxis - iterrows")
 
         renderDat = {}
@@ -217,6 +334,8 @@ class ThicketReader(Reader):
             return unsor_arr
 
     def test(self):
+        import thicket as tt
+
         PATH = "/Users/aschwanden1/lulesh_gen/"
         profiles = [
             y for x in os.walk(PATH) for y in glob(os.path.join(x[0], "*.cali"))
