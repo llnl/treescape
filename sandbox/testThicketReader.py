@@ -13,7 +13,7 @@ from treescape.StackedLine import StackedLine
 from treescape.ThicketReader import ThicketReader, TH_ens
 from treescape.TreeScapeModel import TreeScapeModel
 
-cali_file_loc = "/Users/aschwanden1/datasets/newdemo/mpi"
+cali_file_loc = "/Users/aschwanden1/datasets/newdemo/test4"
 
 # your script here
 th_obj = TH_ens()
