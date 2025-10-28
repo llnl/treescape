@@ -87,8 +87,6 @@ class TreeScapeModel(list):
                     value["ydata"][i] if i < len(value["ydata"]) else None
                 )
 
-                # hack for now to get it working initially
-                # TODO: FIX!
                 if "perftree" in tsm_data[i] and "n" in tsm_data[i]["perftree"]:
                     tsm_data[i]["perftree"]["main"] = tsm_data[i]["perftree"]["n"]
 

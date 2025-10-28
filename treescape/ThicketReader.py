@@ -112,10 +112,6 @@ class ThicketReader(Reader):
 
         return xaxis_arr
 
-    def make_random_number( self ):
-        base = 1565172972
-        num = base + random.randint(0, 8000000)
-        return str(num)
 
     def get_entire(self):
 
@@ -154,53 +150,28 @@ class ThicketReader(Reader):
                 if node_name not in nodes:
                     nodes[node_name] = {"name": node_name, "xaxis": [], "ydata": []}
 
-                meta_stub = {
-                    "cali.caliper.version": "2.2.0-dev",
-                    "cali.channel": "spot",
-                    "user": "chavez35",
-                    "launchdate": self.make_random_number(),
-                    "executablepath": "/g/g90/johnson234/exe/STRIP_HEADER/toss17/impending4.8-3472",
-                    "libraries": "/etc/fin/etc/home.jafd",
-                    "cmdline": "[-active COM",
-                    "cluster": "rockfiro",
-                    "jobsize": "2",
-                    "threads": "101",
-                    "iterations": "11400000",
-                    "problem_size": "85",
-                    "num_regions": "11",
-                    "region_cost": "5",
-                    "region_balance": "1",
-                    "elapsed_time": "184.0",
-                    "figure_of_merit": "6560.0",
-                    "spot.metrics": "avg#face.duration#inclusive#sum5345"
-                }
-
                 nodes[node_name]["xaxis"].append(meta_by_xaxis[xaxis_value])
                 nodes[node_name]["ydata"].append(ydata)
+
+        # Build meta_globals from the actual DataFrame dtypes
+        meta_globals = {}
+        for col, dtype in self.th_ens.metadata.dtypes.items():
+            # Convert pandas dtypes to simple type strings
+            dtype_str = str(dtype)
+            if 'int' in dtype_str:
+                meta_globals[col] = "int"
+            elif 'float' in dtype_str:
+                meta_globals[col] = "float"
+            elif 'datetime' in dtype_str or 'date' in dtype_str:
+                meta_globals[col] = "date"
+            else:
+                meta_globals[col] = "string"
 
         return {
             "nodes": nodes,
             "childrenMap": childrenMap,
             "parentMap": parentMap,
-            "meta_globals": {
-                "cali.caliper.version": "string",
-                "cali.channel": "string",
-                "user": "string",
-                "launchdate": "int",
-                "executablepath": "string",
-                "libraries": "string",
-                "cmdline": "string",
-                "cluster": "string",
-                "jobsize": "int",
-                "threads": "int",
-                "iterations": "int",
-                "problem_size": "int",
-                "num_regions": "int",
-                "region_cost": "int",
-                "region_balance": "int",
-                "elapsed_time": "float",
-                "figure_of_merit": "float"
-            }
+            "meta_globals": meta_globals
         }
 
     def get_entire_for_xaxis(self, xaxis_name):
