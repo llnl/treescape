@@ -82,6 +82,24 @@ class ThicketReader(Reader):
         self.profiles = profiles
         self.xaxis = xaxis
 
+    def __iter__(self):
+        """Initialize iteration over xaxis values and their associated data."""
+        self.xaxis_values = self.get_all_xaxis()
+        self.meta_values = self.get_all_xaxis_meta()
+        self.index = 0
+        return self
+
+    def __next__(self):
+        """Return the next (xaxis_value, metadata, node_data) tuple."""
+        if self.index < len(self.xaxis_values):
+            xaxis_value = self.xaxis_values[self.index]
+            metadata = self.meta_values[self.index]
+            node_data = self.get_entire_for_xaxis(xaxis_value)
+            self.index += 1
+            return xaxis_value, metadata, node_data
+        else:
+            raise StopIteration
+
     def get_x_axis(self):
         return self.xaxis
 
