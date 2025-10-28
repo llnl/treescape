@@ -223,11 +223,14 @@ class ThicketReader(Reader):
             if name not in sumArr:
                 sumArr[name] = {}
 
+            # Calculate average from sum and count
+            avg_value = row['sum'] / row['count'] if row['count'] > 0 else 0
+
             sumArr[name][xaxis_val] = {
                 'sum': row['sum'],
                 'min': row['min'],
                 'max': row['max'],
-                'avg': 0  # Will be calculated later if needed
+                'avg': avg_value
             }
 
         # uniq_date = len(sumArr["main"])
