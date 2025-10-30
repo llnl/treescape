@@ -113,28 +113,62 @@ class CaliReader(Reader):
         #  2.8s to load 1K          New version 1.067
         #  28 seconds to load 10,000.       60 seconds (i thin most of it was after combining)
 
-        if self.path != "":
-            PATH = self.path
-        else:
+        if self.path == "":
             print("Path must be defined.")
-
-        # PATH = '/Users/aschwanden1/lulesh_gen/1000b/'
-        profiles = None
-        msg = "For path: " + PATH + ".  "
-
-        try:
-            if os.path.exists(PATH) and os.path.isdir(PATH):
-                profiles = [
-                    y for x in os.walk(PATH) for y in glob(os.path.join(x[0], "*.cali"))
-                ]
-            else:
-                print(msg + "Invalid or non-existent directory.")
-                sys.exit()
-        except PermissionError:
-            print(msg + "Permission denied to access some directories.")
             sys.exit()
-        except Exception as e:
-            print(msg + f"An error occurred: {e}")
+
+        # Handle both single string and list of strings
+        profiles = []
+
+        if isinstance(self.path, str):
+            # Single string - could be a directory or a file
+            if os.path.isdir(self.path):
+                # It's a directory - get all .cali files recursively
+                profiles = [
+                    y for x in os.walk(self.path) for y in glob(os.path.join(x[0], "*.cali"))
+                ]
+            elif os.path.isfile(self.path):
+                # It's a single file
+                profiles = [self.path]
+            else:
+                print(f"Path does not exist: {self.path}")
+                sys.exit()
+        elif isinstance(self.path, list):
+            # List of strings - could be directories or files
+            for path in self.path:
+                try:
+                    if os.path.isdir(path):
+                        # It's a directory - get all .cali files recursively
+                        profiles.extend([
+                            y for x in os.walk(path) for y in glob(os.path.join(x[0], "*.cali"))
+                        ])
+                    elif os.path.isfile(path):
+                        # It's a file
+                        profiles.append(path)
+                    else:
+                        print(f"Path does not exist: {path}")
+                        sys.exit()
+                except PermissionError:
+                    print(f"Permission denied to access: {path}")
+                    sys.exit()
+                except Exception as e:
+                    print(f"An error occurred with path {path}: {e}")
+                    sys.exit()
+
+            # Remove duplicates while preserving order
+            seen = set()
+            unique_profiles = []
+            for profile in profiles:
+                if profile not in seen:
+                    seen.add(profile)
+                    unique_profiles.append(profile)
+            profiles = unique_profiles
+        else:
+            print(f"Path must be a string or list of strings, got {type(self.path)}")
+            sys.exit()
+
+        if not profiles:
+            print("No .cali files found in the specified path(s).")
             sys.exit()
 
         self.first_profile = profiles[0]
