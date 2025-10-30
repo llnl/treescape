@@ -6,6 +6,7 @@
     // Define the component
     function StackedLine(element2, PJ_Bus) {
 
+        //  used for testing of removing nodes.
         //this.removeRandomPerftreeEntry( PJ_Bus.entireForest );
 
         this.$conElement = $(element2);
@@ -78,6 +79,7 @@
                 if (keys.length > 0) {
                     let randomKey = keys[Math.floor(Math.random() * keys.length)];
                     delete node.perftree[randomKey];
+                    console.log('delete randomKey: '+randomKey);
                 }
             }
         });

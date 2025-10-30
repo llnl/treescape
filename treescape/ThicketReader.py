@@ -9,14 +9,9 @@ from glob import glob
 import os
 
 from .MyTimer import MyTimer
-
-
-input_deploy_dir_str = "/usr/gapps/spot/dev/"
+import thicket as tt
 machine = platform.uname().machine
 
-# Lazy import of thicket - will be imported when needed
-# import thicket as tt
-import random
 
 from .Reader import Reader
 
@@ -33,23 +28,6 @@ class TH_ens:
     def get_th_ens_impl(self, cali_files):
 
         if TH_ens.th_ens_defined == 0:
-
-            # Try to import thicket, adding common paths if needed
-            try:
-                import thicket as tt
-            except ModuleNotFoundError:
-                import sys
-                # Try common thicket installation paths
-                thicket_paths = [
-                    "/Users/aschwanden1/thicket",
-                    "/usr/gapps/spot/thicket",
-                ]
-                for path in thicket_paths:
-                    if os.path.exists(path) and path not in sys.path:
-                        sys.path.append(path)
-
-                # Try importing again
-                import thicket as tt
 
             TH_ens.th_ens_defined = 1
 
