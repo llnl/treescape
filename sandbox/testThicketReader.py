@@ -1,8 +1,7 @@
 import sys
 import time
 
-import sys
-
+sys.path.append("/Users/aschwanden1/thicket")
 sys.path.append("/Users/aschwanden1/min-venv-local/lib/python3.9/site-packages")
 sys.path.append("/Users/aschwanden1/github/treescape")
 sys.path.append("/Users/aschwanden1/github/treescape/treescape")

@@ -7,11 +7,11 @@
 import platform
 from glob import glob
 import os
+import thicket as tt
 
 from .MyTimer import MyTimer
-import thicket as tt
-machine = platform.uname().machine
 
+machine = platform.uname().machine
 
 from .Reader import Reader
 
@@ -31,11 +31,44 @@ class TH_ens:
 
             TH_ens.th_ens_defined = 1
 
-            # get a list of all cali files in subdirectory - recursively
-            PATH = cali_files
-            TH_ens.profiles = [
-                y for x in os.walk(PATH) for y in glob(os.path.join(x[0], "*.cali"))
-            ]
+            # Handle both single string and list of strings
+            if isinstance(cali_files, str):
+                # Single string - could be a directory or a file
+                if os.path.isdir(cali_files):
+                    # It's a directory - get all .cali files recursively
+                    TH_ens.profiles = [
+                        y for x in os.walk(cali_files) for y in glob(os.path.join(x[0], "*.cali"))
+                    ]
+                elif os.path.isfile(cali_files):
+                    # It's a single file
+                    TH_ens.profiles = [cali_files]
+                else:
+                    raise ValueError(f"Path does not exist: {cali_files}")
+            elif isinstance(cali_files, list):
+                # List of strings - could be directories or files
+                TH_ens.profiles = []
+                for path in cali_files:
+                    if os.path.isdir(path):
+                        # It's a directory - get all .cali files recursively
+                        TH_ens.profiles.extend([
+                            y for x in os.walk(path) for y in glob(os.path.join(x[0], "*.cali"))
+                        ])
+                    elif os.path.isfile(path):
+                        # It's a file
+                        TH_ens.profiles.append(path)
+                    else:
+                        raise ValueError(f"Path does not exist: {path}")
+
+                # Remove duplicates while preserving order
+                seen = set()
+                unique_profiles = []
+                for profile in TH_ens.profiles:
+                    if profile not in seen:
+                        seen.add(profile)
+                        unique_profiles.append(profile)
+                TH_ens.profiles = unique_profiles
+            else:
+                raise TypeError(f"cali_files must be a string or list of strings, got {type(cali_files)}")
 
             #  this contains some metadata we need.
             #  also contains the tree data.
