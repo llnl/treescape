@@ -65,6 +65,26 @@ regression_notebooks - This directory contains notebooks that are used to run re
 licenses - This directory contains the licenses for the project.
 js - This directory contains the javascript code for the project.
 
+# Tree Mapping:
+for caliReader, you load cali files like so:
+r = cr.CaliperReader("/path/to/cali/files")
+r.records then gives you the merged set a of all records from all inputs.
+  then in CaliReader the make_child_map function creates the mapping by calling mapMaker.make repeatedly on all the paths
+
+For thicket reader, this is how you get trees:
+th_ens = tt.Thicket.from_caliperreader(cali_files)
+
+From that I derive a tree.
+
+Multiple cali_files go in and that function, does not choose a tree.  Instead, it constructs a super tree that is the union of all nodes and call paths found in all those files.
+
+All nodes from all callpaths appear.
+
+The tree grows to include everything encountered.
+
+If a node is missing in a specific file, the metric value for that node is NaN or absent.
+
+
 # Contributions
 
 We welcome all kinds of contributions: new features, bug fixes, documentation edits; it's all great!
