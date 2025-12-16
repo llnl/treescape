@@ -7,16 +7,17 @@ from .Reader import Reader
 
 
 class Run:
-    def __init__(self, metadata, perftree, reader):
+    def __init__(self, metadata, perftree, reader, childrenMap=None):
         self.metadata = metadata
         self.perftree = perftree
         self.read_from = reader
+        self.childrenMap = childrenMap if childrenMap is not None else {}
 
     def __str__(self):
         return str(self.to_dict())
 
     def to_dict(self):
-        return {"metadata": self.metadata, "perftree": self.perftree}
+        return {"metadata": self.metadata, "perftree": self.perftree, "childrenMap": self.childrenMap}
 
     def getMetaData(self, key):
         return self.metadata[key]
@@ -92,7 +93,7 @@ class TreeScapeModel(list):
 
         tsm_runs = []
         for index, td_obj in enumerate(tsm_data):
-            r0 = Run(td_obj["metadata"], td_obj["perftree"], reader)
+            r0 = Run(td_obj["metadata"], td_obj["perftree"], reader, self.childrenMap)
             tsm_runs.append(r0)
 
         tsm_data = tsm_runs
