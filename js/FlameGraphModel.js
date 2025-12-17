@@ -43,19 +43,9 @@ ST.FlameGraphModel = function () {
 
     function getSpot2Color_(name, children) {
 
-        var suffix = "";
-
-        if (children) {
-            for (var i = 0; i < children.length; i++) {
-
-                if (children[i]) {
-                    suffix += children[i].name;
-                }
-            }
-        }
-
-        //var colorH = hashStringToNumber(name + suffix);
-        var colorH = spot2ColorHash(name + suffix);
+        // Hash only the node name to ensure consistent colors across runs
+        // Previously included children names which caused color changes between runs
+        var colorH = spot2ColorHash(name);
 
         // Generate random values for red, green, and blue components
         // Combine components into a CSS color string
@@ -65,10 +55,20 @@ ST.FlameGraphModel = function () {
     function spot2ColorHash(text, alpha) {
         const reverseString = text.split("").reverse().join("")
         const hash = jQuery.md5(reverseString)
-        const r = parseInt(hash.slice(12, 14), 16)
-        const g = parseInt(hash.slice(14, 16), 16)
+
+        // Use different parts of the hash for better color distribution
+        const r = parseInt(hash.slice(0, 2), 16)
+        const g = parseInt(hash.slice(8, 10), 16)
         const b = parseInt(hash.slice(16, 18), 16)
-        return `rgb(${r}, ${g}, ${b}, 0.6)`
+
+        // Ensure colors are vibrant by boosting low values
+        const minBrightness = 80;
+        const maxBrightness = 220;
+        const normalizedR = minBrightness + (r / 255) * (maxBrightness - minBrightness);
+        const normalizedG = minBrightness + (g / 255) * (maxBrightness - minBrightness);
+        const normalizedB = minBrightness + (b / 255) * (maxBrightness - minBrightness);
+
+        return `rgb(${Math.round(normalizedR)}, ${Math.round(normalizedG)}, ${Math.round(normalizedB)}, 0.6)`
     }
 
 
