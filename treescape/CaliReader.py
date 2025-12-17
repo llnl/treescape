@@ -45,6 +45,8 @@ class CaliReader(Reader):
         self.pool_size = pool_size
         self.path = path
         self.mapMaker = CaliMapMaker()
+        self.childrenMaps_by_xaxis = {}  # Store childrenMap per xaxis value
+        self.paths_by_xaxis = {}  # Store paths per xaxis value (for building childrenMaps)
 
         self.entireForest = {"nodes": {}}
 
@@ -206,10 +208,26 @@ class CaliReader(Reader):
         with multiprocessing.Pool(pool_size) as pool:
             results = pool.starmap(self.read_many_files_wrapper, args)
 
-        results = self.combine_objects(results)
+        # Extract nodes and paths from results
+        all_nodes = []
+        all_paths_data = []
+
+        for result in results:
+            all_nodes.append(result["nodes"])
+            all_paths_data.extend(result["paths_data"])
+
+        # Combine all the node data
+        combined_nodes = self.combine_objects(all_nodes)
+
+        # Collect paths by xaxis_key
+        for paths_info in all_paths_data:
+            xaxis_key = paths_info["xaxis_key"]
+            if xaxis_key not in self.paths_by_xaxis:
+                self.paths_by_xaxis[xaxis_key] = []
+            self.paths_by_xaxis[xaxis_key].extend(paths_info["paths"])
 
         self.meta_globals = self.get_meta_globals()
-        self.xy_idx_by_drill_level = results
+        self.xy_idx_by_drill_level = combined_nodes
 
         #pretty_json = json.dumps(self.xy_idx_by_drill_level, indent=4)
         #print(pretty_json)
@@ -221,22 +239,35 @@ class CaliReader(Reader):
     def read_many_files(self, *several_tuples, inclusive_strings):
 
         each_res = []
+        paths_data = []  # Collect paths from each file
 
         for tuple in several_tuples:
-            one_file = self.read_one_file(tuple[0], inclusive_strings)
+            one_file_result = self.read_one_file(tuple[0], inclusive_strings)
             # print('----------------------------------')
-            # print(one_file)
-            each_res.append(one_file)
+            # print(one_file_result)
+
+            # Extract the node data and paths
+            each_res.append(one_file_result["nodes"])
+            paths_data.append({
+                "xaxis_key": one_file_result["xaxis_key"],
+                "paths": one_file_result["paths"]
+            })
 
         # still need to combine and return it.
         total_dict = self.combine_my_objects(each_res)
-        return total_dict
+
+        # Return both the combined nodes and the paths data
+        return {"nodes": total_dict, "paths_data": paths_data}
 
     def combine_my_objects(self, array0):
         combined_data = {}
 
         for obj in array0:
             for key, data in obj.items():
+                # Skip nodes with no data (happens when records are filtered out)
+                if not data["xaxis"] or not data["ydata"]:
+                    continue
+
                 xaxis = data["xaxis"][0]
                 ydata = data["ydata"][0]
 
@@ -271,6 +302,12 @@ class CaliReader(Reader):
 
         glob0 = cr.read_caliper_globals(cali_file)
 
+        # Create a key for this xaxis value to store paths
+        xaxis_key = str(sorted(glob0.items()))
+
+        # Collect paths for this file (will be returned and combined in parent process)
+        file_paths = []
+
         for rec in r.records:
             if "path" in rec:
                 path = rec["path"][-1]
@@ -278,34 +315,34 @@ class CaliReader(Reader):
                 if path not in nodes_idx_by_path:
                     nodes_idx_by_path[path] = {"name": path, "xaxis": [], "ydata": []}
 
-                nodes_idx_by_path[path]["xaxis"].append(glob0)
+                # Store the full path for building childrenMap later
+                if not isinstance(rec["path"], str):
+                    file_paths.append(rec["path"])
 
-                for i in range(4):  # 0 to 3
-                    if i >= len(rec):  # Avoid index out of range error
-                        print(
-                            f"rec doesn't have string at index {inclusive_strings[i]}"
-                        )
-                        sys.exit()
-                    if (
-                        inclusive_strings[i] not in rec
-                    ):  # Check if the string exists and is not empty
-                        print(
-                            f"rec doesn't have string at index {inclusive_strings[i]}"
-                        )
-                        sys.exit()
+                # Check if all required metrics are present in this record
+                has_all_metrics = all(inclusive_strings[i] in rec for i in range(4))
+
+                if not has_all_metrics:
+                    # Skip records that don't have all required metrics
+                    # This allows mixed datasets with different metric formats
+                    continue
+
+                # Only append xaxis when we also append ydata (to keep them in sync)
+                nodes_idx_by_path[path]["xaxis"].append(glob0)
 
                 nodes_idx_by_path[path]["ydata"].append(
                     {
-                        "min": rec[inclusive_strings[0]],
-                        "max": rec[inclusive_strings[1]],
-                        "avg": rec[inclusive_strings[2]],
-                        "sum": rec[inclusive_strings[3]],
+                        "min": float(rec[inclusive_strings[0]]),
+                        "max": float(rec[inclusive_strings[1]]),
+                        "avg": float(rec[inclusive_strings[2]]),
+                        "sum": float(rec[inclusive_strings[3]]),
                     }
                 )
 
                 # nodes_idx_by_path[path]["ydata"].append( float(rec["avg#inclusive#sum#time.duration"]) )
 
-        return nodes_idx_by_path
+        # Return both the node data and the paths with their xaxis_key
+        return {"nodes": nodes_idx_by_path, "xaxis_key": xaxis_key, "paths": file_paths}
 
     def custom_sort_key(self, value):
         try:
@@ -413,14 +450,59 @@ class CaliReader(Reader):
         self.make_child_map()
         cm = self.mapMaker.getChildrenMap()
 
+        # Add per-node childrenMap to each node, with per-xaxis childrenMaps
+        nodes_with_children_map = {}
+        for node_name, node_data in self.xy_idx_by_drill_level.items():
+            # For each xaxis value in this node's data, get the corresponding childrenMap
+            per_xaxis_children_maps = []
+
+            for xaxis_metadata in node_data["xaxis"]:
+                # Convert metadata dict to the same key format used in make_child_map
+                xaxis_key = str(sorted(xaxis_metadata.items()))
+
+                # Get the childrenMap for this specific xaxis value
+                if xaxis_key in self.childrenMaps_by_xaxis:
+                    file_cm = self.childrenMaps_by_xaxis[xaxis_key]
+                    # Extract only this node's children from the file's childrenMap
+                    node_children_map = {}
+                    if node_name in file_cm:
+                        node_children_map[node_name] = file_cm[node_name]
+                    per_xaxis_children_maps.append(node_children_map)
+                else:
+                    # Fallback to global childrenMap if not found
+                    node_children_map = {}
+                    if node_name in cm:
+                        node_children_map[node_name] = cm[node_name]
+                    per_xaxis_children_maps.append(node_children_map)
+
+            # Copy the node data and add the per-xaxis childrenMaps
+            nodes_with_children_map[node_name] = {
+                **node_data,
+                "childrenMaps": per_xaxis_children_maps  # Array of childrenMaps, one per xaxis value
+            }
+
         return {
             "meta_globals": self.meta_globals,
-            "nodes": self.xy_idx_by_drill_level,
+            "nodes": nodes_with_children_map,
             "childrenMap": cm,
         }
 
     def make_child_map(self):
+        """Build childrenMaps per xaxis value (per file/run) using cached path data"""
 
+        # Build a childrenMap for each xaxis value using the cached paths
+        for xaxis_key, paths in self.paths_by_xaxis.items():
+            # Create a new CaliMapMaker for this specific xaxis value
+            file_map_maker = CaliMapMaker()
+
+            # Build the childrenMap from the cached paths
+            for path in paths:
+                file_map_maker.make(path)
+
+            # Store the childrenMap associated with this xaxis value
+            self.childrenMaps_by_xaxis[xaxis_key] = file_map_maker.getChildrenMap()
+
+        # Also keep the old global childrenMap for backward compatibility
         for rec in self.r.records:
             if "path" in rec:
                 if not isinstance(rec["path"], str):

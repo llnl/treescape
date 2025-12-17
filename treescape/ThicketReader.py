@@ -177,11 +177,16 @@ class ThicketReader(Reader):
                 # xaxis_value is the metadata for this run
 
                 if node_name not in nodes:
+                    # Create a per-node childrenMap containing only this node's children
+                    node_children_map = {}
+                    if node_name in childrenMap:
+                        node_children_map[node_name] = childrenMap[node_name]
+
                     nodes[node_name] = {
                         "name": node_name,
                         "xaxis": [],
                         "ydata": [],
-                        "childrenMap": childrenMap  # Add childrenMap to each node
+                        "childrenMap": node_children_map  # Each node gets its own childrenMap
                     }
 
                 nodes[node_name]["xaxis"].append(meta_by_xaxis[xaxis_value])

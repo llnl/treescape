@@ -76,11 +76,15 @@ ST.FlameGraphModel = function () {
 
         nodes_idx_by_name_ = index_nodes_by_name_(ef.nodes, agg, index_to_get);
 
-        if( !ef.childrenMap ) {
+        // Use per-run childrenMap if available, otherwise fall back to global
+        var cm = ef.childrenMap;  // Default to global childrenMap
+
+        if (ef.nodes && ef.nodes[index_to_get] && ef.nodes[index_to_get].childrenMap) {
+            // Use the specific run's childrenMap
+            cm = ef.nodes[index_to_get].childrenMap;
+        } else if( !ef.childrenMap ) {
             console.log('************** Warning: I do not have a childrenMap. ********************');
         }
-
-        var cm = ef.childrenMap;
 
         const root = Object.keys(cm)[0];
         var topWidth = 620;

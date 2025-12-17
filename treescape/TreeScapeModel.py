@@ -78,22 +78,32 @@ class TreeScapeModel(list):
             for i, metadata in enumerate(value["xaxis"]):
                 # Find or create the entry for the current index
                 if len(tsm_data) <= i:
-                    tsm_data.append({"metadata": {}, "perftree": {}})
+                    tsm_data.append({"metadata": {}, "perftree": {}, "childrenMap": None})
 
                 # Add or update the metadata and perftree
                 tsm_data[i]["metadata"] = metadata
 
-                # Ensure the current key is in perftree
-                tsm_data[i]["perftree"][key] = (
-                    value["ydata"][i] if i < len(value["ydata"]) else None
-                )
+                # Get the ydata for this node
+                ydata = value["ydata"][i] if i < len(value["ydata"]) else None
+
+                # Store ydata in perftree
+                tsm_data[i]["perftree"][key] = ydata
+
+                # If this node has per-xaxis childrenMaps, use the one for this index
+                if "childrenMaps" in value and i < len(value["childrenMaps"]):
+                    # Merge this node's childrenMap into the run's childrenMap
+                    if tsm_data[i]["childrenMap"] is None:
+                        tsm_data[i]["childrenMap"] = {}
+                    tsm_data[i]["childrenMap"].update(value["childrenMaps"][i])
 
                 if "perftree" in tsm_data[i] and "n" in tsm_data[i]["perftree"]:
                     tsm_data[i]["perftree"]["main"] = tsm_data[i]["perftree"]["n"]
 
         tsm_runs = []
         for index, td_obj in enumerate(tsm_data):
-            r0 = Run(td_obj["metadata"], td_obj["perftree"], reader, self.childrenMap)
+            # Use the per-run childrenMap if available, otherwise use global
+            run_children_map = td_obj.get("childrenMap") if td_obj.get("childrenMap") else self.childrenMap
+            r0 = Run(td_obj["metadata"], td_obj["perftree"], reader, run_children_map)
             tsm_runs.append(r0)
 
         tsm_data = tsm_runs
