@@ -1035,11 +1035,25 @@
         this.$conElement.find('.count-display').text(this.count);
     };
 
-    window.INIT = function () {
+    window.INIT = function (retryCount) {
+            retryCount = retryCount || 0;
+            var maxRetries = 20; // Max 1 second of retries (20 * 50ms)
 
             var element = currentCell;
             var el = $('.stacked-line-component[container_id="' + container_id + '"]');
 
+            if (el.length === 0) {
+                if (retryCount < maxRetries) {
+                    // Container not in DOM yet, wait and retry
+                    console.log('Container not found for container_id=' + container_id + ', retrying... (' + (retryCount + 1) + '/' + maxRetries + ')');
+                    setTimeout(function() { window.INIT(retryCount + 1); }, 50);
+                } else {
+                    console.error('Failed to find container after ' + maxRetries + ' retries for container_id=' + container_id);
+                }
+                return;
+            }
+
+            console.log('Initializing StackedLine for container_id=' + container_id);
             el.each(function () {
                 new StackedLine(this, window.PJ_Bus);
             });

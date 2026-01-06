@@ -307,18 +307,21 @@ class StackedLine:
         # display(HTML('<link rel="stylesheet" href="../stacked.css">' ))
         display(HTML("<style>" + styleCSS + "</style>"))
 
-        #  this does not work.
-        #  on localhost we have to use custom.js
-        # display(HTML('<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>'))
-
-        display(Javascript(code))
-
+        # Display HTML container FIRST, before JavaScript
+        # This ensures the DOM element exists when JavaScript tries to find it
         html_content = (
             '<div container_id="'
             + str(self.container_id)
             + '" class="stacked-line-component"></div>'
         )
         display(HTML(html_content))
+
+        #  this does not work.
+        #  on localhost we have to use custom.js
+        # display(HTML('<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>'))
+
+        # Display JavaScript AFTER the HTML container
+        display(Javascript(code))
 
     def getLibs(self):
 
