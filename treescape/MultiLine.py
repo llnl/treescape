@@ -4,25 +4,18 @@
 # SPDX-License-Identifier: MIT
 
 import matplotlib
+import matplotlib.pyplot as plt
 
-# Only use Jupyter backend if we're actually in a Jupyter environment
+# Configure matplotlib for Jupyter after importing pyplot
 try:
-    # Check if we're in a Jupyter environment
     from IPython import get_ipython
-
     ipython = get_ipython()
     if ipython is not None:
-        # We're in IPython/Jupyter - use inline backend
-        # This works for both Jupyter Notebook and JupyterLab
-        matplotlib.use("module://matplotlib_inline.backend_inline")
-    else:
-        # Use a non-interactive backend for scripts
-        matplotlib.use("Agg")
-except ImportError:
-    # IPython not available, use non-interactive backend
-    matplotlib.use("Agg")
-
-import matplotlib.pyplot as plt
+        # Enable inline plotting for Jupyter
+        ipython.run_line_magic('matplotlib', 'inline')
+except:
+    # Not in Jupyter or magic command failed, continue anyway
+    pass
 
 from collections import defaultdict
 from datetime import datetime
@@ -211,13 +204,16 @@ class MultiLine:
         plt.legend()
         plt.tight_layout()
 
-        # Show the plot - use IPython display if available for better JupyterLab support
+        # In Jupyter with %matplotlib inline, the figure displays automatically
+        # We don't need plt.show() - it actually causes the text representation to appear
+        # Just let the figure object be returned and Jupyter will display it
         try:
-            from IPython.display import display
-            display(plt.gcf())  # Get current figure and display it
-            plt.close()  # Close to prevent duplicate display
-        except ImportError:
-            # Fallback to regular show if IPython not available
+            from IPython import get_ipython
+            if get_ipython() is None:
+                # Not in Jupyter, use show()
+                plt.show()
+        except:
+            # IPython not available, use show()
             plt.show()
 
     def make_x_uniq(self, a, b):
