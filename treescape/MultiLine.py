@@ -10,13 +10,11 @@ try:
     # Check if we're in a Jupyter environment
     from IPython import get_ipython
 
-    if (
-        get_ipython() is not None
-        and get_ipython().__class__.__name__ == "ZMQInteractiveShell"
-    ):
-        matplotlib.use(
-            "module://matplotlib_inline.backend_inline"
-        )  # for Jupyter notebook
+    ipython = get_ipython()
+    if ipython is not None:
+        # We're in IPython/Jupyter - use inline backend
+        # This works for both Jupyter Notebook and JupyterLab
+        matplotlib.use("module://matplotlib_inline.backend_inline")
     else:
         # Use a non-interactive backend for scripts
         matplotlib.use("Agg")
@@ -213,8 +211,14 @@ class MultiLine:
         plt.legend()
         plt.tight_layout()
 
-        # Show the plot
-        plt.show()
+        # Show the plot - use IPython display if available for better JupyterLab support
+        try:
+            from IPython.display import display
+            display(plt.gcf())  # Get current figure and display it
+            plt.close()  # Close to prevent duplicate display
+        except ImportError:
+            # Fallback to regular show if IPython not available
+            plt.show()
 
     def make_x_uniq(self, a, b):
         import numpy as np
